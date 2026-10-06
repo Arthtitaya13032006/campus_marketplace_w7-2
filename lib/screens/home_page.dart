@@ -3,12 +3,19 @@ import 'package:provider/provider.dart';
 import '../models/item.dart';
 import '../models/cart_model.dart';
 import '../repositories/item_repository.dart';
+import '../repositories/favorites_repository.dart';
 import '../services/gemini_service.dart';
 import 'checkout_page.dart';
 
 class HomePage extends StatefulWidget {
   final ItemRepository repository;
-  const HomePage({super.key, required this.repository});
+  final FavoritesRepository favoritesRepository;
+
+  const HomePage({
+    super.key,
+    required this.repository,
+    required this.favoritesRepository,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -16,11 +23,25 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Item>> _itemsFuture;
+  final Set<int> _likedItemIds = {};
 
   @override
   void initState() {
     super.initState();
     _itemsFuture = widget.repository.getItems();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    try {
+      final favs = await widget.favoritesRepository.getAllFavorites();
+      if (mounted) {
+        setState(() {
+          _likedItemIds.clear();
+          _likedItemIds.addAll(favs.map((f) => f.itemId));
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _testGemini() async {
@@ -99,7 +120,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: FutureBuilder<List<Item>>(
         future: _itemsFuture,
-        builder: (context, snapshot) {
+        builder: (_, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -133,7 +154,7 @@ class _HomePageState extends State<HomePage> {
             onRefresh: () async => _refreshItems(),
             child: ListView.builder(
               itemCount: items.length,
-              itemBuilder: (context, index) {
+              itemBuilder: (_, index) {
                 final item = items[index];
                 return ListTile(
                   leading: Image.network(
@@ -146,14 +167,65 @@ class _HomePageState extends State<HomePage> {
                   ),
                   title: Text(item.title),
                   subtitle: Text('${item.price} บาท'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.add_shopping_cart),
-                    onPressed: () {
-                      context.read<CartModel>().add(item);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('เพิ่ม "${item.title}" ลงตะกร้าแล้ว')),
-                      );
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _likedItemIds.contains(item.id)
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: _likedItemIds.contains(item.id)
+                              ? Colors.red
+                              : null,
+                        ),
+                        tooltip: 'ถูกใจ',
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final alreadyLiked = _likedItemIds.contains(item.id);
+                          try {
+                            await widget.favoritesRepository.addFavorite(
+                              item.id,
+                              item.title,
+                              item.price,
+                              item.imageUrl,
+                            );
+                            if (!mounted) return;
+                            setState(() {
+                              _likedItemIds.add(item.id);
+                            });
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  alreadyLiked
+                                      ? '"${item.title}" อยู่ในรายการโปรดแล้ว'
+                                      : 'เพิ่ม "${item.title}" ในรายการโปรดแล้ว',
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('เกิดข้อผิดพลาด: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_shopping_cart),
+                        tooltip: 'เพิ่มลงตะกร้า',
+                        onPressed: () {
+                          context.read<CartModel>().add(item);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('เพิ่ม "${item.title}" ลงตะกร้าแล้ว')),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 );
               },

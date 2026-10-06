@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'sell_item_page.dart';
+import 'favorites_page.dart';
 import '../repositories/item_repository.dart';
+import '../repositories/favorites_repository.dart';
+import '../repositories/listing_draft_repository.dart';
 
 class MainScaffold extends StatefulWidget {
-  final ItemRepository repository;
-  const MainScaffold({super.key, required this.repository});
+  final ItemRepository itemRepository;
+  final FavoritesRepository favoritesRepository;
+  final ListingDraftRepository draftRepository;
+
+  const MainScaffold({
+    super.key,
+    required this.itemRepository,
+    required this.favoritesRepository,
+    required this.draftRepository,
+  });
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -17,8 +28,16 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomePage(repository: widget.repository),
-      const SellItemPage(),
+      HomePage(
+        key: ValueKey('home_$_selectedIndex'),
+        repository: widget.itemRepository,
+        favoritesRepository: widget.favoritesRepository,
+      ),
+      SellItemPage(draftRepository: widget.draftRepository),
+      FavoritesPage(
+        key: ValueKey('fav_$_selectedIndex'),
+        repository: widget.favoritesRepository,
+      ),
     ];
 
     return Scaffold(
@@ -29,8 +48,10 @@ class _MainScaffoldState extends State<MainScaffold> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.storefront), label: 'หน้าหลัก'),
           BottomNavigationBarItem(icon: Icon(Icons.add_a_photo), label: 'ลงประกาศขาย'),
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'รายการโปรด'),
         ],
       ),
     );
   }
 }
+
