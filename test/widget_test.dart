@@ -60,7 +60,7 @@ void main() {
         child: MaterialApp(
           title: 'Campus Marketplace',
           home: HomePage(
-            repository: _FakeItemRepository(),
+            repositories: [_FakeItemRepository()],
             favoritesRepository: _FakeFavoritesRepository(),
           ),
         ),

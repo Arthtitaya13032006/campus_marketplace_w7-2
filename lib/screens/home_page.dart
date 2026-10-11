@@ -5,15 +5,16 @@ import '../models/cart_model.dart';
 import '../repositories/item_repository.dart';
 import '../repositories/favorites_repository.dart';
 import '../services/gemini_service.dart';
+import '../services/auth_service.dart';
 import 'checkout_page.dart';
 
 class HomePage extends StatefulWidget {
-  final ItemRepository repository;
+  final List<ItemRepository> repositories;
   final FavoritesRepository favoritesRepository;
 
   const HomePage({
     super.key,
-    required this.repository,
+    required this.repositories,
     required this.favoritesRepository,
   });
 
@@ -28,8 +29,15 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _itemsFuture = widget.repository.getItems();
+    _itemsFuture = _fetchAllItems();
     _loadFavorites();
+  }
+
+  Future<List<Item>> _fetchAllItems() async {
+    final results = await Future.wait(
+      widget.repositories.map((repo) => repo.getItems()),
+    );
+    return results.expand((list) => list).toList();
   }
 
   Future<void> _loadFavorites() async {
@@ -91,7 +99,7 @@ class _HomePageState extends State<HomePage> {
 
   void _refreshItems() {
     setState(() {
-      _itemsFuture = widget.repository.getItems();
+      _itemsFuture = _fetchAllItems();
     });
   }
 
@@ -115,6 +123,13 @@ class _HomePageState extends State<HomePage> {
               context,
               MaterialPageRoute(builder: (_) => const CheckoutPage()),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'ออกจากระบบ',
+            onPressed: () async {
+              await AuthService().signOut();
+            },
           ),
         ],
       ),
@@ -165,7 +180,45 @@ class _HomePageState extends State<HomePage> {
                     errorBuilder: (context, error, stackTrace) =>
                         const Icon(Icons.broken_image),
                   ),
-                  title: Text(item.title),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: item.sellerId != null
+                              ? Colors.green.shade50
+                              : Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: item.sellerId != null
+                                ? Colors.green.shade300
+                                : Colors.blue.shade300,
+                          ),
+                        ),
+                        child: Text(
+                          item.sellerId != null ? '🎓 นักศึกษา' : '🏪 API',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: item.sellerId != null
+                                ? Colors.green.shade800
+                                : Colors.blue.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   subtitle: Text('${item.price} บาท'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

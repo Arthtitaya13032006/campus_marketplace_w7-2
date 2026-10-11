@@ -160,7 +160,7 @@ class ItemRepositoryApi implements ItemRepository {
       price: 39.99,
       description: 'Lightweight perfet for trip or casual wear---Long sleeve with hooded, adjustable drawstring waist design.',
       category: "women's clothing",
-      imageUrl: 'https://m.media-amazon.com/images/I/71HblAHs5xL._AC_UY879_-2.jpg',
+      imageUrl: 'https://m.media-amazon.com/images/I/71HblAHs5xL._AC_UY879_.jpg',
     ),
     Item(
       id: 18,
